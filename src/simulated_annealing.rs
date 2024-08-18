@@ -13,5 +13,5 @@ pub enum CoupledSAMethods {
 pub enum AnnealingSchedules {
     Exponential(f64),
     Fast(),
-    Logistic,
+    Logarithmic,
 }

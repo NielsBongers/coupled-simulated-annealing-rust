@@ -62,7 +62,7 @@ fn update_temperature(
     match annealing_schedule {
         AnnealingSchedules::Exponential(gamma) => gamma * temperature,
         AnnealingSchedules::Fast() => temperature_0 / iteration as f64,
-        AnnealingSchedules::Logistic => {
+        AnnealingSchedules::Logarithmic => {
             temperature_0 * f64::ln(2.0) / f64::ln(iteration as f64 + 1.0)
         }
     }

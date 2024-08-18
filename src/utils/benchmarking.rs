@@ -11,6 +11,8 @@ use std::{
     path::Path,
 };
 
+/// Ackley's function with standard parameters: https://en.wikipedia.org/wiki/Ackley_function.
+/// By design, the global minimum is at the origin, independent of the number of dimensions dimensions.
 pub fn ackley(x: &Vec<f64>) -> f64 {
     use std::f64::consts::E;
     use std::f64::consts::PI;
@@ -29,6 +31,7 @@ pub fn ackley(x: &Vec<f64>) -> f64 {
     term1 + term2 + a + E
 }
 
+/// Simple benchmark code that evaluates either a constant number of function evaluations over an increasing number of threads (to compare standard SA vs CSA) or a constant number of function evaluations per individual thread. Saves a CSV to results/benchmark.csv. Folder is created if it does not already exist.
 pub fn benchmark(
     x_0: Vec<f64>,
     temperature_0: f64,
@@ -45,7 +48,7 @@ pub fn benchmark(
         .write(true)
         .truncate(true)
         .create(true)
-        .open("results/ackley_benchmark.csv")
+        .open("results/benchmark.csv")
         .expect("Failed to open or create file");
 
     // Write the CSV header

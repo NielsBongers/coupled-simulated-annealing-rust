@@ -1,8 +1,7 @@
+use simulated_annealing::simulated_annealing::simulated_annealing::coupled_simulated_annealing;
 use simulated_annealing::simulated_annealing::{AnnealingSchedules, CoupledSAMethods};
 use simulated_annealing::utils::benchmarking::ackley;
 use simulated_annealing::utils::utils::f64_generation_function;
-
-use simulated_annealing::simulated_annealing::simulated_annealing::coupled_simulated_annealing;
 
 fn main() {
     let x_0: Vec<f64> = vec![10.0, 10.0, 10.0];

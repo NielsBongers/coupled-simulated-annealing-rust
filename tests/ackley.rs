@@ -7,6 +7,7 @@ use simulated_annealing::{
 };
 
 #[test]
+/// Basic test case on Ackley's function: should get very close to the origin.
 fn test_ackley() {
     let x_0 = vec![5.0, 5.0, 5.0];
     let temperature_0 = 5.0;
