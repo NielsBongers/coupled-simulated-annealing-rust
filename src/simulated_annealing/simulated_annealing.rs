@@ -83,14 +83,15 @@ pub fn coupled_simulated_annealing<T>(
 where
     T: Clone + std::marker::Send + 'static,
 {
-    // let shared_energy_states: Arc<Vec<Mutex<f64>>> =
-    //     Arc::new((0..number_threads).map(|_| Mutex::new(0.0)).collect());
-
+    // This is gamma in Xavier-de-Sousa's paper. This is a mutex-protected vector where all the threads write their coupling contributions to.
+    // The memory barrier ensures they all finish writing the current iteration before they start reading again.
+    // They can never overwrite because of the mutexes but they could desync.
     let coupling_terms: Arc<Mutex<Vec<f64>>> = Arc::new(Mutex::new(vec![0.0; number_threads]));
     let memory_barrier = Arc::new(Barrier::new(number_threads));
 
     let mut handles = Vec::<JoinHandle<T>>::new();
 
+    // Creating all the threads. The anneal(...) function returns the type T result per thread.
     for thread_id in 0..number_threads {
         let coupling_terms: Arc<Mutex<Vec<f64>>> = Arc::clone(&coupling_terms);
         let memory_barrier_clone = Arc::clone(&memory_barrier);
@@ -117,7 +118,8 @@ where
         handles.push(handle);
     }
 
-    let result_tuple = handles
+    // Taking all the handles, joining and unwrapping them, getting their best states out, then finding the minimum energy, and returning the associated state.
+    handles
         .into_iter()
         .map(|handle| {
             let x = handle.join().unwrap();
@@ -125,9 +127,8 @@ where
             (x, energy_x)
         })
         .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
-        .expect("Unwrapping the results failed.");
-
-    result_tuple.0
+        .expect("Unwrapping the results failed.")
+        .0
 }
 
 /// Performs simulated annealing.
@@ -147,23 +148,27 @@ pub fn anneal<T>(
 where
     T: Clone,
 {
+    // This is thread-local with different seeds per thread.
     let mut rng = rand::thread_rng();
 
+    // Initializing the state and the temperature.
     let mut x = x_0;
+    let mut temperature = temperature_0;
+
+    // Tracking the best performance for this instance.
     let mut x_best = x.clone();
     let mut energy_best = f64::MAX;
 
-    let mut temperature = temperature_0;
-
     for iteration in 0..max_iterations {
+        // New trial state.
         let y = generation(generation_function, &x, &mut rng);
 
-        temperature =
-            update_temperature(&annealing_schedule, iteration, temperature, temperature_0);
-
+        // Energies for the current and trial state.
         let energy_x = energy(energy_function, &x);
         let energy_y = energy(energy_function, &y);
 
+        // Updating the coupling terms for the current thread.
+        // This sets gamma based on the current acceptance function used (see Table 1 in Xavier-de-Sousa).
         coupling_terms.lock().unwrap()[thread_id] =
             coupling_term(&acceptance_function, energy_x, temperature);
 
@@ -186,6 +191,10 @@ where
         } else {
             x
         };
+
+        // Updating the temperature for the next iteration.
+        temperature =
+            update_temperature(&annealing_schedule, iteration, temperature, temperature_0);
     }
 
     x_best
