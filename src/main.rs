@@ -4,7 +4,7 @@ use simulated_annealing::simulated_annealing::{AcceptanceFunctions, AnnealingSch
 use simulated_annealing::utils::utils::floating_distributions;
 use simulated_annealing::utils::DistributionType;
 
-use simulated_annealing::simulated_annealing::simulated_annealing::anneal;
+use simulated_annealing::simulated_annealing::simulated_annealing::coupled_simulated_annealing;
 
 fn f64_generation_function(x: &Vec<f64>, rng: &mut ThreadRng) -> Vec<f64> {
     let vector_length = x.len();
@@ -32,14 +32,17 @@ fn f64_energy_function(x: &Vec<f64>) -> f64 {
 }
 
 fn main() {
+    // coupled_simulated_annealing(5);
+
     let x_0 = vec![1.0, 2.0, 3.0];
     let temperature_0 = 10.0;
 
-    let acceptance_function = AcceptanceFunctions::Metropolis;
+    let acceptance_function = AcceptanceFunctions::MuSA;
     let annealing_schedule = AnnealingSchedules::Exponential(0.5);
     let max_iterations: i64 = 1000;
+    let number_threads = 10;
 
-    let x = anneal(
+    let x = coupled_simulated_annealing(
         f64_generation_function,
         f64_energy_function,
         acceptance_function,
@@ -47,7 +50,18 @@ fn main() {
         x_0,
         temperature_0,
         max_iterations,
+        number_threads,
     );
+
+    // let x = anneal(
+    //     f64_generation_function,
+    //     f64_energy_function,
+    //     acceptance_function,
+    //     annealing_schedule,
+    //     x_0,
+    //     temperature_0,
+    //     max_iterations,
+    // );
 
     println!("x: {:?}", x);
 }
