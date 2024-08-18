@@ -33,11 +33,11 @@ fn f64_energy_function(x: &Vec<f64>) -> f64 {
 
 fn main() {
     let x_0 = vec![1.0, 2.0, 3.0];
-    let temperature_0 = 300.0;
+    let temperature_0 = 10.0;
 
     let acceptance_function = AcceptanceFunctions::Metropolis;
     let annealing_schedule = AnnealingSchedules::Exponential(0.5);
-    let max_iterations: u64 = 1000;
+    let max_iterations: i64 = 1000;
 
     let x = anneal(
         f64_generation_function,

@@ -1,7 +1,9 @@
+use core::f64;
+
 use crate::simulated_annealing::AcceptanceFunctions;
 use rand::prelude::*;
 
-use super::AnnealingSchedules;
+use crate::simulated_annealing::AnnealingSchedules;
 
 fn generation<T>(
     generation_function: fn(&T, &mut ThreadRng) -> T,
@@ -23,28 +25,9 @@ fn acceptance_probability(
 ) -> f64 {
     match acceptance_function {
         AcceptanceFunctions::Metropolis => f64::exp((energy_x - energy_y) / temperature),
-        AcceptanceFunctions::Logistic => 1.0 / (1.0 + f64::exp(energy_y - energy_x) / temperature),
-    }
-}
-
-fn acceptance<T>(
-    energy_function: fn(&T) -> f64,
-    acceptance_function: &AcceptanceFunctions,
-    rng: &mut ThreadRng,
-    x: T,
-    y: T,
-    temperature: f64,
-) -> T {
-    let energy_x = energy(energy_function, &x);
-    let energy_y = energy(energy_function, &y);
-
-    if energy_y <= energy_x
-        || acceptance_probability(acceptance_function, energy_x, energy_y, temperature)
-            > rng.gen::<f64>()
-    {
-        y
-    } else {
-        x
+        AcceptanceFunctions::Logistic => {
+            1.0 / (1.0 + f64::exp((energy_y - energy_x) / temperature))
+        }
     }
 }
 
@@ -57,6 +40,9 @@ fn update_temperature(
     match annealing_schedule {
         AnnealingSchedules::Exponential(gamma) => gamma * temperature,
         AnnealingSchedules::Fast() => temperature_0 / iteration as f64,
+        AnnealingSchedules::Logistic => {
+            temperature_0 * f64::ln(2.0) / f64::ln(iteration as f64 + 1.0)
+        }
     }
 }
 
@@ -67,31 +53,43 @@ pub fn anneal<T>(
     annealing_schedule: AnnealingSchedules,
     x_0: T,
     temperature_0: f64,
-    max_iterations: u64,
-) -> T {
+    max_iterations: i64,
+) -> T
+where
+    T: Clone,
+{
     let mut rng = rand::thread_rng();
 
-    let mut iteration = 0;
     let mut x = x_0;
+    let mut x_best = x.clone();
+    let mut energy_best = f64::MAX;
+
     let mut temperature = temperature_0;
 
-    for _ in 0..max_iterations {
+    for iteration in 0..max_iterations {
         let y = generation(generation_function, &x, &mut rng);
 
         temperature =
             update_temperature(&annealing_schedule, iteration, temperature, temperature_0);
 
-        x = acceptance(
-            energy_function,
-            &acceptance_function,
-            &mut rng,
-            x,
-            y,
-            temperature,
-        );
+        let energy_x = energy(energy_function, &x);
+        let energy_y = energy(energy_function, &y);
 
-        iteration += 1;
+        // Accepting directly if E(y) <= E(x), otherwise accepting if A(x, y) > r, with r randomly sampled.
+        x = if energy_y <= energy_x
+            || acceptance_probability(&acceptance_function, energy_x, energy_y, temperature)
+                > rng.gen::<f64>()
+        {
+            // Only checked if E(y) <= E(x), which the best will necessarily also be. Reduces expensive clones.
+            if energy_y < energy_best {
+                energy_best = energy_y;
+                x_best = y.clone();
+            }
+            y
+        } else {
+            x
+        };
     }
 
-    x
+    x_best
 }

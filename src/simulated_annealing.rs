@@ -8,4 +8,5 @@ pub enum AcceptanceFunctions {
 pub enum AnnealingSchedules {
     Exponential(f64),
     Fast(),
+    Logistic,
 }
