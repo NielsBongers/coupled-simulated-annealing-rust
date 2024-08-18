@@ -5,6 +5,7 @@ use rand::prelude::*;
 
 use crate::simulated_annealing::AnnealingSchedules;
 
+/// Generates a stochastically modified version of the input state using a generic generation function.
 fn generation<T>(
     generation_function: fn(&T, &mut ThreadRng) -> T,
     x: &T,
@@ -13,10 +14,12 @@ fn generation<T>(
     generation_function(&x, rng)
 }
 
+/// Calculates the energy for a given state.
 fn energy<T>(energy_function: fn(&T) -> f64, x: &T) -> f64 {
     energy_function(x)
 }
 
+/// Returns the acceptance probability for two given states based on common functions.
 fn acceptance_probability(
     acceptance_function: &AcceptanceFunctions,
     energy_x: f64,
@@ -31,6 +34,7 @@ fn acceptance_probability(
     }
 }
 
+/// Adjusts the temperature for a given annealing schedule based on the iteration, temperature, and initial temperature.
 fn update_temperature(
     annealing_schedule: &AnnealingSchedules,
     iteration: i64,
@@ -46,6 +50,8 @@ fn update_temperature(
     }
 }
 
+/// Performs simulated annealing.
+/// A generic generation function which creates new probing states, an energy function determining the energy level of the states, and an acceptance function and annealing schedule have to be passed, as well as the initial temperature and state, and the maximum number of iterations.
 pub fn anneal<T>(
     generation_function: fn(&T, &mut ThreadRng) -> T,
     energy_function: fn(&T) -> f64,
