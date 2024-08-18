@@ -4,7 +4,7 @@
 
 ## Overview 
 
-This is a simple Rust implementation of the paper [<i>Coupled Simulated Annealing</i>](https://ieeexplore.ieee.org/document/5184877) by Xavier-de-Sousa et al. Compared to regular parallel Simulated Annealing (SA) implementations, instead of running multiple in parallel to explore the search space, the parallel runs are instead coupled together through a parameter $\gamma$, which modifies the acceptance probability, hence the name Coupled Simulated Annealing (CSA)
+This is a simple Rust implementation of the paper [<i>Coupled Simulated Annealing</i>](https://ieeexplore.ieee.org/document/5184877) by Xavier-de-Sousa et al. Compared to regular parallel Simulated Annealing (SA) implementations, instead of running multiple runs in parallel to explore the search space, the parallel runs are instead coupled together through a parameter $\gamma$, which modifies the acceptance probability, hence the name Coupled Simulated Annealing (CSA)
 
 In regular SA, we have $0 \leq A(x \to y) \leq 1$ as the acceptance probability. In CSA, we have $0 \leq A_\Theta (\gamma, x_i \to y_i) \leq 1$. The parameter $\gamma$ is dependent on the energies of the set of current states $\Theta \equiv \{x_i\}_{i=1}^m$, so $\gamma = f [E(x_1, E(x_2), \ldots, E(x_m)]$. 
 
@@ -35,3 +35,7 @@ Additionally, there is a benchmark function with some Python code included to ev
 ## Installation 
 
 Simply clone the repo and run ```cargo run --release```. ```main.rs``` has an example ready using some convenience functions, and can directly be modified. 
+
+## Motivation 
+
+I came across this paper while studying simulated annealing algorithms and liked it a lot. It's a great idea, based on thermodynamic concepts (multiple connected thermodynamic heat baths), and once you get the idea, very intuitive. I was also curious if I could implement everything using generics in Rust: this is my first time using them. Having an excuse to explore ```Arc/Mutex/Barrier``` concepts in parallel Rust was also a major reason to look into this. 
