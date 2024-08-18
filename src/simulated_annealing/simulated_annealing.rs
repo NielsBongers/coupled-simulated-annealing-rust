@@ -10,11 +10,12 @@ use crate::simulated_annealing::AnnealingSchedules;
 
 /// Generates a stochastically modified version of the input state using a generic generation function.
 fn generation<T>(
-    generation_function: fn(&T, &mut ThreadRng) -> T,
+    generation_function: fn(&T, f64, &mut ThreadRng) -> T,
     x: &T,
+    temperature: f64,
     rng: &mut ThreadRng,
 ) -> T {
-    generation_function(&x, rng)
+    generation_function(&x, temperature, rng)
 }
 
 /// Calculates the energy for a given state.
@@ -71,7 +72,7 @@ fn update_temperature(
 /// Coupling occurs through the acceptance function and a coupling parameter gamma.
 /// See Xavier-de-Sousa2010 for algorithm details.
 pub fn coupled_simulated_annealing<T>(
-    generation_function: fn(&T, &mut ThreadRng) -> T,
+    generation_function: fn(&T, f64, &mut ThreadRng) -> T,
     energy_function: fn(&T) -> f64,
     coupled_sa_method: CoupledSAMethods,
     annealing_schedule: AnnealingSchedules,
@@ -131,7 +132,7 @@ where
 /// Performs simulated annealing.
 /// A generic generation function which creates new probing states, an energy function determining the energy level of the states, and an acceptance function and annealing schedule have to be passed, as well as the initial temperature and state, and the maximum number of iterations.
 pub fn anneal<T>(
-    generation_function: fn(&T, &mut ThreadRng) -> T,
+    generation_function: fn(&T, f64, &mut ThreadRng) -> T,
     energy_function: fn(&T) -> f64,
     coupled_sa_method: CoupledSAMethods,
     annealing_schedule: AnnealingSchedules,
@@ -158,7 +159,7 @@ where
 
     for iteration in 0..max_iterations {
         // New trial state.
-        let y = generation(generation_function, &x, &mut rng);
+        let y = generation(generation_function, &x, temperature, &mut rng);
 
         // Energies for the current and trial state.
         let energy_x = energy(energy_function, &x);
