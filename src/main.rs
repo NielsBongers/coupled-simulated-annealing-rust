@@ -1,6 +1,6 @@
 use rand::prelude::*;
 
-use simulated_annealing::simulated_annealing::{AcceptanceFunctions, AnnealingSchedules};
+use simulated_annealing::simulated_annealing::{AnnealingSchedules, CoupledSAMethods};
 use simulated_annealing::utils::utils::floating_distributions;
 use simulated_annealing::utils::DistributionType;
 
@@ -31,21 +31,39 @@ fn f64_energy_function(x: &Vec<f64>) -> f64 {
         .sum()
 }
 
+fn ackley(x: &Vec<f64>) -> f64 {
+    use std::f64::consts::E;
+    use std::f64::consts::PI;
+
+    let a = 20.0;
+    let b = 0.2;
+    let c = 2.0 * PI;
+
+    let n = x.len() as f64;
+    let sum1: f64 = x.iter().map(|&xi| xi.powi(2)).sum();
+    let sum2: f64 = x.iter().map(|&xi| (c * xi).cos()).sum();
+
+    let term1 = -a * (-b * (sum1 / n).sqrt()).exp();
+    let term2 = -(sum2 / n).exp();
+
+    term1 + term2 + a + E
+}
+
 fn main() {
     // coupled_simulated_annealing(5);
 
-    let x_0 = vec![1.0, 2.0, 3.0];
-    let temperature_0 = 10.0;
+    let x_0 = vec![5.0, 5.0, 5.0];
+    let temperature_0 = 1.0;
 
-    let acceptance_function = AcceptanceFunctions::MuSA;
-    let annealing_schedule = AnnealingSchedules::Exponential(0.5);
-    let max_iterations: i64 = 1000;
-    let number_threads = 10;
+    let coupled_sa_method = CoupledSAMethods::CSA_MuSA;
+    let annealing_schedule = AnnealingSchedules::Fast();
+    let max_iterations: i64 = 100000;
+    let number_threads = 20;
 
     let x = coupled_simulated_annealing(
         f64_generation_function,
-        f64_energy_function,
-        acceptance_function,
+        ackley,
+        coupled_sa_method,
         annealing_schedule,
         x_0,
         temperature_0,

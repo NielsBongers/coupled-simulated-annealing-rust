@@ -1,8 +1,7 @@
-use crate::simulated_annealing::AcceptanceFunctions;
+use crate::simulated_annealing::CoupledSAMethods;
 use core::f64;
 use rand::prelude::*;
 use std::{
-    result,
     sync::{Arc, Barrier, Mutex},
     thread::{self, JoinHandle},
 };
@@ -24,33 +23,31 @@ fn energy<T>(energy_function: fn(T) -> f64, x: T) -> f64 {
 }
 
 /// Returns the acceptance probability for two given states based on common functions.
+/// Different acceptance functions are supported: see Xavier-de-Sousa2010, Table 1.
+/// These are connected to the coupling terms.
 fn acceptance_probability(
-    acceptance_function: &AcceptanceFunctions,
+    coupled_sa_method: &CoupledSAMethods,
     energy_x: f64,
     energy_y: f64,
     gamma: f64,
     temperature: f64,
 ) -> f64 {
-    match acceptance_function {
-        // AcceptanceFunctions::Metropolis => f64::exp((energy_x - energy_y) / temperature),
-        // AcceptanceFunctions::Logistic => {
-        //     1.0 / (1.0 + f64::exp((energy_y - energy_x) / temperature))
-        // }
-        AcceptanceFunctions::MuSA => {
+    match coupled_sa_method {
+        CoupledSAMethods::CSA_MuSA => {
             f64::exp(-energy_y / temperature) / (f64::exp(-energy_y / temperature) + gamma)
         }
-        AcceptanceFunctions::BA => 1.0 - (f64::exp(-energy_x / temperature)) / gamma,
+        CoupledSAMethods::CSA_BA => 1.0 - (f64::exp(-energy_x / temperature)) / gamma,
+        CoupledSAMethods::CSA_M => f64::exp(energy_x / temperature) / gamma,
     }
 }
 
-fn coupling_term(
-    acceptance_function: &AcceptanceFunctions,
-    energy_x: f64,
-    temperature: f64,
-) -> f64 {
-    match acceptance_function {
-        AcceptanceFunctions::MuSA => f64::exp(-energy_x / temperature),
-        AcceptanceFunctions::BA => f64::exp(-energy_x / temperature),
+/// Calculates the coupling terms to calculate gamma with.
+/// See Table 1 one Xavier-de-Sousa2010.
+fn coupling_term(coupled_sa_method: &CoupledSAMethods, energy_x: f64, temperature: f64) -> f64 {
+    match coupled_sa_method {
+        CoupledSAMethods::CSA_MuSA => f64::exp(-energy_x / temperature),
+        CoupledSAMethods::CSA_BA => f64::exp(-energy_x / temperature),
+        CoupledSAMethods::CSA_M => f64::exp(energy_x / temperature),
     }
 }
 
@@ -70,10 +67,13 @@ fn update_temperature(
     }
 }
 
+/// Performs coupled simulated annealing over a specified number of threads.
+/// Coupling occurs through the acceptance function and a coupling parameter gamma.
+/// See Xavier-de-Sousa2010 for algorithm details.
 pub fn coupled_simulated_annealing<T>(
     generation_function: fn(&T, &mut ThreadRng) -> T,
     energy_function: fn(&T) -> f64,
-    acceptance_function: AcceptanceFunctions,
+    coupled_sa_method: CoupledSAMethods,
     annealing_schedule: AnnealingSchedules,
     x_0: T,
     temperature_0: f64,
@@ -89,14 +89,15 @@ where
     let coupling_terms: Arc<Mutex<Vec<f64>>> = Arc::new(Mutex::new(vec![0.0; number_threads]));
     let memory_barrier = Arc::new(Barrier::new(number_threads));
 
-    let mut handles = Vec::<JoinHandle<T>>::new();
+    // Instantiating the handles.
+    let mut handles = Vec::<JoinHandle<(T, f64)>>::new();
 
     // Creating all the threads. The anneal(...) function returns the type T result per thread.
     for thread_id in 0..number_threads {
         let coupling_terms: Arc<Mutex<Vec<f64>>> = Arc::clone(&coupling_terms);
         let memory_barrier_clone = Arc::clone(&memory_barrier);
 
-        let acceptance_function_clone = acceptance_function.clone();
+        let coupled_sa_method_clone = coupled_sa_method.clone();
         let annealing_schedule_clone = annealing_schedule.clone();
         let x_0_clone = x_0.clone();
 
@@ -104,7 +105,7 @@ where
             anneal(
                 generation_function,
                 energy_function,
-                acceptance_function_clone,
+                coupled_sa_method_clone,
                 annealing_schedule_clone,
                 coupling_terms,
                 memory_barrier_clone,
@@ -121,11 +122,7 @@ where
     // Taking all the handles, joining and unwrapping them, getting their best states out, then finding the minimum energy, and returning the associated state.
     handles
         .into_iter()
-        .map(|handle| {
-            let x = handle.join().unwrap();
-            let energy_x = energy(energy_function, &x);
-            (x, energy_x)
-        })
+        .map(|handle| handle.join().unwrap())
         .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
         .expect("Unwrapping the results failed.")
         .0
@@ -136,7 +133,7 @@ where
 pub fn anneal<T>(
     generation_function: fn(&T, &mut ThreadRng) -> T,
     energy_function: fn(&T) -> f64,
-    acceptance_function: AcceptanceFunctions,
+    coupled_sa_method: CoupledSAMethods,
     annealing_schedule: AnnealingSchedules,
     coupling_terms: Arc<Mutex<Vec<f64>>>,
     memory_barrier: Arc<Barrier>,
@@ -144,7 +141,7 @@ pub fn anneal<T>(
     x_0: T,
     temperature_0: f64,
     max_iterations: i64,
-) -> T
+) -> (T, f64)
 where
     T: Clone,
 {
@@ -168,9 +165,9 @@ where
         let energy_y = energy(energy_function, &y);
 
         // Updating the coupling terms for the current thread.
-        // This sets gamma based on the current acceptance function used (see Table 1 in Xavier-de-Sousa).
+        // This sets gamma based on the current coupled SA method used (see Table 1 in Xavier-de-Sousa).
         coupling_terms.lock().unwrap()[thread_id] =
-            coupling_term(&acceptance_function, energy_x, temperature);
+            coupling_term(&coupled_sa_method, energy_x, temperature);
 
         // Waiting for all the others to complete this step too.
         memory_barrier.wait();
@@ -179,7 +176,7 @@ where
 
         // Accepting directly if E(y) <= E(x), otherwise accepting if A(x, y) > r, with r randomly sampled.
         x = if energy_y <= energy_x
-            || acceptance_probability(&acceptance_function, energy_x, energy_y, gamma, temperature)
+            || acceptance_probability(&coupled_sa_method, energy_x, energy_y, gamma, temperature)
                 > rng.gen::<f64>()
         {
             // Only checked if E(y) <= E(x), which the best will necessarily also be. Reduces expensive clones.
@@ -197,5 +194,6 @@ where
             update_temperature(&annealing_schedule, iteration, temperature, temperature_0);
     }
 
-    x_best
+    // Returning this thread's best-performing state.
+    (x_best, energy_best)
 }
