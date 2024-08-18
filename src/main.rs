@@ -70,12 +70,12 @@ fn main() {
     for number_threads in 1..=20 {
         let mut performance_vector = Vec::<f64>::new();
 
-        let max_iterations = total_evaluations;
-        // let max_iterations = total_evaluations / number_threads;
+        // let max_iterations = total_evaluations;
+        let max_iterations = total_evaluations / number_threads;
         let number_threads = number_threads as usize;
 
         for _ in 0..number_runs {
-            let x_0 = vec![10.0, 10.0, 10.0];
+            let x_0: Vec<f64> = vec![10.0, 10.0, 10.0];
             let temperature_0 = 5.0;
 
             let coupled_sa_method = CoupledSAMethods::CSA_MuSA;

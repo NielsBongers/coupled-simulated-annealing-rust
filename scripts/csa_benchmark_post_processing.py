@@ -25,13 +25,13 @@ plt.fill_between(mean_performance.index,
 
 plt.xlabel('Threads')
 plt.ylabel('Performance')
-plt.title('Coupled simulated annealing, 40.000 evaluations each on Ackley')
+plt.title('Coupled simulated annealing, 40.000 evaluations overall on Ackley')
 plt.legend()
 plt.xticks(ticks=np.arange(1, len(grouped.unique()) + 1, 1))  # Setting x-axis ticks only at integer values
 plt.semilogy()
 plt.grid(True)
 
 Path("figures").mkdir(exist_ok=True, parents=True)
-plt.savefig(f"figures/{datetime.now().strftime('%d%m%Y - ')}Coupled simulated annealing - performance comparison - 40.000 each.png", dpi=300)
+plt.savefig(f"figures/{datetime.now().strftime('%d%m%Y - ')}Coupled simulated annealing - performance comparison - 40.000 total.png", dpi=300)
 
 plt.show()
