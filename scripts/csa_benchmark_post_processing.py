@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +26,7 @@ plt.xticks(ticks=np.arange(1, len(grouped.unique()) + 1, 1))  # Setting x-axis t
 plt.semilogy()
 plt.grid(True)
 
-plt.savefig(f"figures/{datetime.now().strftime('%d%m%Y - ')} Coupled simulated annealing - performance comparison.png", dpi=300)
+Path("figures").mkdir(exist_ok=True, parents=True)
+plt.savefig(f"figures/{datetime.now().strftime('%d%m%Y - ')}Coupled simulated annealing - performance comparison.png", dpi=300)
 
 plt.show()
